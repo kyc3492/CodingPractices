@@ -37,51 +37,86 @@ import sys
 '''
 #sys.stdin = open("input.txt", "r")
 
+def Range_Checker(c, r, W, H):
+    if 0 <= c < H and 0 <= r < W:
+        return True
+    else:
+        return False
+
+def Block_Counter(board):
+    global answer
+    cnt = 0
+    for i in range(H):
+        for j in range(W):
+            if board[i][j] != 0:
+                cnt += 1
+    answer = min(answer, cnt)
+
+def Block_Rearrange(board):
+    new_board = [[0] * W for _ in range(H)]
+    for w in range(W):
+        init = H - 1
+        for h in range(H - 1, -1, -1):
+            if board[h][w] != 0:
+                new_board[init][w] = board[h][w]
+                init -= 1
+    return new_board
+
+def Block_Breaker(board, c, r, cnt):
+    board[c][r] = 0
+    if cnt > 1:
+        for i in range(1, cnt):
+            for d in range(4):
+                nc = c + dc[d] * i
+                nr = r + dr[d] * i
+                if Range_Checker(nc, nr, W, H):
+                    if board[nc][nr] > 1:
+                        Block_Breaker(board, nc, nr, board[nc][nr])
+                    board[nc][nr] = 0
+
+def Game_Start(board, N):
+    if N == 0:
+        # Game Over.
+        Block_Counter(board)
+        return
+
+    for ball in range(W):
+        tmp_board = [[0] * W for _ in range(H)]
+        for i in range(H):
+            tmp_board[i] = board[i][:]
+
+        c, r = 0, ball
+        while c < H and board[c][r] == 0:
+            #Passing Empties.
+            c += 1
+        if c == H:
+            # Finished this Column. Count Now.
+            Block_Counter(tmp_board)
+            #Pass This Loop
+            continue
+        #Not Empty here. Start Breaking.
+        Block_Breaker(tmp_board, c, r, tmp_board[c][r])
+        tmp_board = Block_Rearrange(tmp_board)
+        Game_Start(tmp_board, N - 1)
+
 T = int(input())
 # 여러개의 테스트 케이스가 주어지므로, 각각을 처리합니다.
 for test_case in range(1, T + 1):
     # ///////////////////////////////////////////////////////////////////////////////////
 
-    #입력받고
-    #dfs로 하나 없애고 쭉 진행
-    def SEARCH(N):
-        TMP_BOARD = BOARD[:]
-        #맨 위 0이 아닌 숫자 찾기
-        for i in range(H):
-            for j in range(W):
-                if TMP_BOARD[i][j] == 0:
-                    pass
-                else:
-                    #일단 1 거르고
-                    if TMP_BOARD[i][j] != 1:
-                        RANGE = TMP_BOARD[i][j]
-                        #1 아닌 숫자부터 터뜨리기
-                        for c in range(4):
-                            for k in range(RANGE):
-                                NX = i + (DX[c] * k)
-                                NY = j + (DY[c] * k)
-                                TMP = TMP_BOARD[NX][NY]
-                                TMP_BOARD[NX][NY] = 0
-                                if DX[c] == 0:
-                                    
-
-    def EXPLODE(X, Y):
-
-                                
-
-
-    #위에 있던거 밑으로 내리기
-
     N, W, H = map(int, input().split())
-    BOARD = []
+    board = []
     for i in range(H):
-        BOARD.append(list(map(int, input().split())))
+        board.append(list(map(int, input().split())))
 
-    DX = [-1, 0, 1, 0]
-    DY = [0, 1, 0, -1]
+    # Directions. No Upward.
+    dc = [0, 1, 0, -1]
+    dr = [1, 0, -1, 0]
 
-    print(BOARD)
+    # Initial Maximum Blocks.
+    answer = W * H
+    Game_Start(board, N)
+    print(f'#{test_case} {answer}')
 
-    SEARCH(N)
 
     # ///////////////////////////////////////////////////////////////////////////////////
