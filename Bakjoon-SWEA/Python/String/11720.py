@@ -1,6 +1,6 @@
 
 N = input()
-number = (input())
+number = input()
 print(sum(int(each) for each in list(number)))
 
 # map 연습
