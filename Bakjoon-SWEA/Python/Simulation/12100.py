@@ -60,12 +60,13 @@ def DFS(board, cnt):
     # 4군데 각 방향으로 진행
     for _ in range(4):
         # 원래 상황을 얕은 복사 및 돌리기를 수행한다.
-        tmp_board = rotate(deepcopy(board))
+        tmp_board = deepcopy(board)
         # 복사해둔 것으로 이동을 수행한다
         tmp_board = move(tmp_board)
         # 이동이 수행되었다면 다음 이동을 준비한다.
         DFS(tmp_board, cnt + 1)
         # 원상복구한 후 현재 단계에서의 다른 방향으로의 이동을 시도한다.
+        tmp_board = rotate(tmp_board)
         # 맨 위에서 얕은 복사를 수행하므로 복구할 필요 없을 듯.
         
 DFS(board, 0)
