@@ -2,22 +2,24 @@ from collections import defaultdict
 
 # 초기 값 지정
 n, m = -1, -1
-MAX_N, MAX_M = 100000, 10
-# 이중 연결리스트의 초기화 -> head, tail, total, prev, next
+MAX_M = 10
+# 이중 연결리스트의 초기화 -> head, tail, prev, next
 # 벨트는 최대 10개, idx대로 1~10
 head = [0 for _ in range(MAX_M + 1)]
 tail = [0 for _ in range(MAX_M + 1)]
 # 물건은 ID: Weight 모양의 dict를 만들자.
-weight = defaultdict(lambda : 0)
+weight = {}
 # prev, next 역시 dict를 만들면 된다.
 # lambda 식으로 defaultdict를 만들어주면 순회 돌면서 찾는 속도를 줄일 수 있음.
+# 초기값은 0으로 주면서 0인 경우 없다는 느낌으로
 prev = defaultdict(lambda: 0)
 next = defaultdict(lambda: 0)
-
-broken = [False] * MAX_M
 # 물건 id 별 벨트 번호를 기록할 것임.
 # -1은 사라진 물건.
 belt_num = defaultdict(lambda: -1)
+# 벨트의 고장 여부를 파악할 거임.
+# True인 경우에는 고장난 것.
+broken = [False] * MAX_M
 
 # 공장 설립
 def build_factory(command):
@@ -53,30 +55,49 @@ def build_factory(command):
 
     return
 
-# 받은 idx의 벨트에서 head를 넘겨주고 이전 head를 반환해주는 함수
-def pop_head(belt_idx):
-    # 현재 head를 받아둠.
-    ori_head = head[belt_idx]
-    # 다음 head
-    next_head = next[ori_head]
-    # 현재 head의 next / 다음 head의 prev, next 관계 청산
-    next[ori_head] = 0
-    prev[next_head] = 0
-    # head 변경
-    head[belt_idx] = next_head
-    # 이전 head 반환
-    return ori_head
+# ID에 해당하는 상자 삭제
+def remove_id(box_id, remove_belt):
+    # 박스에 할당된 벨트 번호 제거
+    b_num = belt_num[box_id]
+    # 벨트에서 내려야하는 상황이면
+    if remove_belt:
+        belt_num[box_id] = -1
 
-# 받은 idx의 벨트에 id 박스를 꼬리로써 추가해주는 함수
-def push_tail(belt_idx, box_id):
-    # 현재 tail을 받아둠.
-    ori_tail = tail[belt_idx]
-    # 현재 tail 다음으로 올 다음 tail과의 prev, next 관계를 생성
-    next[ori_tail] = box_id
-    prev[box_id] = ori_tail
-    # tail 변경
-    tail[belt_idx] = box_id
-    return
+    # 하나 남아있었다면 head, tail이 사라짐
+    if head[b_num] == tail[b_num]:
+        head[b_num] = tail[b_num] = 0
+
+    # head가 삭제된다면 head만 변경
+    elif box_id == head[b_num]:
+        next_id = next[box_id]
+        head[b_num] = next_id
+        prev[next_id] = 0
+
+    # tail이 삭제된다면 tail만 변경
+    elif box_id == tail[b_num]:
+        prev_id = prev[box_id]
+        tail[b_num] = prev_id
+        next[box_id] = 0
+
+    # 중간이 삭제된다면 수선
+    else:
+        prev_id, next_id = prev[box_id], next[box_id]
+        next[prev_id] = next_id
+        prev[next_id] = prev_id
+
+    # next, prev 삭제
+    next[box_id] = prev[box_id] = 0
+
+
+# target_id를 받으면 바로 뒤에 id를 추가
+def push_id(target, box_id):
+    next[target] = box_id
+    prev[box_id] = target
+
+    # target이 tail이었다면 tail을 변경
+    b_num = belt_num[target]
+    if tail[b_num] == target:
+        tail[b_num] = box_id
 
 
 # 상자 하차
@@ -87,24 +108,27 @@ def load_boxes(command):
     # 컨베이어벨트들을 확인
     for belt_idx in range(1, m + 1):
         # 고장난 건 패스
-        if broken[belt_idx] == -1:
+        if broken[belt_idx]:
             continue
-        # 각 벨트들의 head를 본다
-        # 이 head가 w_max 이하라면
-        if weight[head[belt_idx]] <= w_max:
-            # 하차 무게에 더하고
-            loaded += weight[head[belt_idx]]
-            # head를 넘겨줘야함. + 해당 벨트에서 내리자
-            loading = pop_head(belt_idx)
-            belt_num[loading] = -1
-            # weight도 0으로 만들어 삭제해준다.
-            weight[loading] = 0
-        else:
-            # head를 받아서 tail로 변경해주는 것과 같음.
-            push_tail(belt_idx, pop_head(belt_idx))
+        # 각 벨트들의 head를 본다. 비어있는 것들 패스
+        if head[belt_idx] != 0:
+            box_id = head[belt_idx]
+            # 이 head가 w_max 이하라면
+            if weight[box_id] <= w_max:
+                # 하차 무게에 더하고
+                loaded += weight[box_id]
+                # head를 넘겨줘야함. + 해당 벨트에서 내리자
+                remove_id(box_id, True)
+            # head를 맨 뒤로 넘겨야 하는 상황이라면
+            elif next[box_id] != 0:
+                # 제거해주고, 단 벨트에서 내리는 건 아님.
+                remove_id(box_id, False)
+                # 맨 뒤에 push
+                push_id(tail[belt_idx], box_id)
 
     print(loaded)
     return
+
 
 # 상자 제거
 def remove_box(command):
@@ -114,43 +138,10 @@ def remove_box(command):
         print(-1)
         return
 
-    # 해당 박스의 소속 벨트를 확인한다.
-    b_num = belt_num[r_id]
-    # 삭제할 거니까 소속 벨트 정보는 삭제
-    belt_num[r_id] = -1
-
-    # 분기 처리
-    # 하나 있던 거라면
-    if head[b_num] == tail[b_num]:
-        # head, tail만 삭제
-        head[b_num] = 0
-        tail[b_num] = 0
-    # head를 삭제한다면
-    elif r_id == head[b_num]:
-        # head 변경
-        next_id = next[r_id]
-        head[b_num] = next_id
-        # 땡겨진 head의 prev 삭제
-        prev[next_id] = 0
-    # tail을 삭제한다면
-    elif r_id == tail[b_num]:
-        # tail 삭제
-        prev_id = prev[r_id]
-        tail[b_num] = prev_id
-        next[prev_id] = 0
-    # 중간에 있는 거라면 prev, next만 수정
-    else:
-        prev_id = prev[r_id]
-        next_id = next[r_id]
-        prev[next_id] = prev_id
-        next[prev_id] = next_id
-
-    next[r_id] = 0
-    prev[r_id] = 0
-
+    # 상자 제거
+    remove_id(r_id, True)
     print(r_id)
     return
-
 
 
 # 상자 찾아 그 상자에서부터 tail까지 다 가져오기
@@ -162,12 +153,12 @@ def find_box(command):
         return
 
     b_num = belt_num[f_id]
-
     # 해당 상자가 이미 head가 아닐 때에만 적용
     if head[b_num] != f_id:
         # head, tail 변경
         ori_head = head[b_num]
         ori_tail = tail[b_num]
+
         # 해당상자 이후 상자들을 모두 가져와야하므로
         # 직전 상자를 받아둔다.
         prev_id = prev[f_id]
@@ -177,7 +168,7 @@ def find_box(command):
         prev[ori_head] = ori_tail
         next[ori_tail] = ori_head
 
-        prev[f_id] = 0
+        #prev[f_id] = 0
         next[prev_id] = 0
 
     print(b_num)
@@ -215,9 +206,9 @@ def bad_belt(command):
                 tail[belt_idx] = tail[b_num]
             else:
                 # 해당 위치로 상자를 전부 옮긴다.
-                wanna_move = pop_head(b_num)
-                push_tail(belt_idx, wanna_move)
-                belt_num[wanna_move] = belt_idx
+                push_id(tail[belt_idx], head[belt_idx])
+                # tail 변경
+                tail[belt_idx] = tail[b_num]
 
             # 전체 벨트 위치 갱신
             box_idx = head[b_num]

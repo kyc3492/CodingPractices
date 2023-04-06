@@ -73,32 +73,30 @@ while stack:
     # 상어를 움직일 수 있을만큼 (최대 거리 3) 움직인 후 스택에 넣어줌
     now_dir = now_board[now_c][now_r][1]
     # 상어가 움직였는지 채크
-    isSharkMoved = False
     for dist in range(1, 4):
         # 현재에서 배열을 복사
-        board_to_stack = [[(0, 0)] * 4 for _ in range(4)]
+        next_board = [[(0, 0)] * 4 for _ in range(4)]
         for c in range(4):
             for r in range(4):
-                board_to_stack[c][r] = now_board[c][r]
-        nc = now_c + (directions[now_dir][0]) * dist
-        nr = now_r + (directions[now_dir][1]) * dist
+                next_board[c][r] = now_board[c][r]
+        next_c = now_c + (directions[now_dir][0]) * dist
+        next_r = now_r + (directions[now_dir][1]) * dist
         # 범위 내인가?
-        if 0 <= nc < 4 and 0 <= nr < 4:
+        if 0 <= next_c < 4 and 0 <= next_r < 4:
             # 물고기가 있는가? 빈 칸이면 못 감
-            if board_to_stack[nc][nr][0] > 0:
+            if next_board[next_c][next_r][0] > 0:
                 # 먹을 수 있는 물고기가 있다면 상어는 이동한다.
-                isSharkMoved = True
-                # 먹고 현재 먹은 번호 합 갱신
-                tmp_ate = board_to_stack[nc][nr][0]
+                tmp_ate = next_board[next_c][next_r][0]
                 now_ate += tmp_ate
-                answer = max(answer, now_ate)
                 # 상어 이동
-                board_to_stack[nc][nr] = (-1, board_to_stack[nc][nr][1])
+                next_board[next_c][next_r] = (-1, next_board[next_c][next_r][1])
                 # 원래 상어 위치는 빈 칸
-                board_to_stack[now_c][now_r] = (0, 0)
+                next_board[now_c][now_r] = (0, 0)
                 # 현 상태를 stack에 추가
-                stack.append((nc, nr, board_to_stack, now_ate))
+                stack.append((next_c, next_r, next_board, now_ate))
                 now_ate -= tmp_ate
-                isSharkMoved = True
+    # 먹고 현재 먹은 번호 합 갱신
+    answer = max(answer, now_ate)
+    print(now_ate)
 
 print(answer)
